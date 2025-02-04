@@ -1,4 +1,4 @@
-import { Given, When, Then, setDefaultTimeout } from '@cucumber/cucumber';
+import { Given, When, Then, setDefaultTimeout, Before, After } from '@cucumber/cucumber';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
@@ -9,6 +9,7 @@ import { exec } from 'child_process';
 import { promisify } from 'util';
 import * as aiMessageGenerator from '../../src/utils/ai-message-generator';
 import sinon from 'sinon';
+import { PassThrough } from 'stream';
 
 // 设置更长的超时时间
 setDefaultTimeout(30000);
@@ -23,6 +24,20 @@ let lastCommitMessage: string = '';
 let lastOutput: string = '';
 let initialStatus: any = null;
 let generateAIMessageStub: sinon.SinonStub;
+let mockStdin: PassThrough;
+let originalStdin: typeof process.stdin;
+
+Before(function () {
+    // 在每个场景开始前保存原始的 stdin 并创建模拟的 stdin
+    originalStdin = process.stdin;
+    mockStdin = new PassThrough();
+    process.stdin = mockStdin as any;
+});
+
+After(function () {
+    // 在每个场景结束后恢复原始的 stdin
+    process.stdin = originalStdin;
+});
 
 Given('当前目录是一个有效的Git仓库', async function () {
     // 在系统临时目录下创建测试仓库
@@ -108,7 +123,7 @@ When('我执行 git-auto-commit 命令', async function () {
     try {
         lastCommitMessage = await generateCommitMessage();
         // 模拟用户输入 'y' 确认提交
-        process.stdin.push('y\n');
+        mockStdin.write('y\n');
         exitCode = 0;
         lastOutput = '提交成功！';
     } catch (error) {
@@ -121,7 +136,7 @@ When('我执行 git-auto-commit 命令', async function () {
 
 When('用户取消提交', async function () {
     // 模拟用户输入 'n' 取消提交
-    process.stdin.push('n\n');
+    mockStdin.write('n\n');
     lastOutput = '已取消提交';
     exitCode = 0;
 });
