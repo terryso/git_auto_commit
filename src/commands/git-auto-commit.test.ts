@@ -18,8 +18,14 @@ describe('git-auto-commit', () => {
     let mockOpenAIClient: any;
     let mockReadline: any;
     let gitAutoCommit: any;
+    let originalNodeEnv: string | undefined;
 
     beforeEach(() => {
+        // 保存原始的 NODE_ENV
+        originalNodeEnv = process.env.NODE_ENV;
+        // 确保测试在非测试环境运行
+        delete process.env.NODE_ENV;
+
         // 设置 git 存根
         gitStub = {
             checkIsRepo: sinon.stub(),
@@ -72,6 +78,12 @@ describe('git-auto-commit', () => {
     });
 
     afterEach(() => {
+        // 恢复原始的 NODE_ENV
+        if (originalNodeEnv) {
+            process.env.NODE_ENV = originalNodeEnv;
+        } else {
+            delete process.env.NODE_ENV;
+        }
         sinon.restore();
     });
 
@@ -165,6 +177,9 @@ describe('git-auto-commit', () => {
         });
 
         it('应该在用户取消时不执行提交', async () => {
+            // 确保不在测试环境中运行
+            delete process.env.NODE_ENV;
+
             // 设置存根
             gitStub.checkIsRepo.resolves(true);
             gitStub.status.resolves({ 
@@ -196,6 +211,39 @@ describe('git-auto-commit', () => {
             expect(gitStub.add.called).to.be.false;
             expect(gitStub.commit.called).to.be.false;
             expect(consoleLogStub.calledWith('已取消提交')).to.be.true;
+        });
+
+        it('应该在测试环境中自动执行提交', async () => {
+            // 设置测试环境
+            process.env.NODE_ENV = 'test';
+
+            // 设置存根
+            gitStub.checkIsRepo.resolves(true);
+            gitStub.status.resolves({ 
+                isClean: () => false,
+                staged: ['file1.ts'],
+                modified: ['file2.ts'],
+                deleted: [],
+                not_added: [],
+                conflicted: [],
+                created: [],
+                renamed: [],
+                files: [],
+                ahead: 0,
+                behind: 0,
+                current: 'main',
+                tracking: null,
+                detached: false
+            } as StatusResult);
+
+            // 执行测试
+            await gitAutoCommit.main(gitStub, mockOpenAIClient);
+
+            // 验证结果
+            expect(gitStub.add.calledWith(['file1.ts', 'file2.ts'])).to.be.true;
+            expect(gitStub.commit.calledWith('feat: 测试提交信息')).to.be.true;
+            expect(consoleLogStub.calledWith('提交成功！')).to.be.true;
+            expect(mockReadline.question.called).to.be.false;
         });
 
         it('应该在发生错误时显示错误信息并以非零状态码退出', async () => {
