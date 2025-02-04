@@ -35,3 +35,5 @@ logs/
 
 # 操作系统文件
 Thumbs.db 
+
+cucumber-report.html
