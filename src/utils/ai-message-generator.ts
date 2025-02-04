@@ -144,33 +144,33 @@ type必须是：feat（新功能）/fix（修复）之一。
                 : '正在等待 AI 响应...');
 
             // 输出调试用的 CURL 命令
-            const requestBody = {
-                model: "deepseek-ai/DeepSeek-V3",
-                messages: messages,
-                temperature: 0.3,
-                max_tokens: 256,
-                stream: false
-            };
+            // const requestBody = {
+            //     model: "deepseek-ai/DeepSeek-V3",
+            //     messages: messages,
+            //     temperature: 0.3,
+            //     max_tokens: 256,
+            //     stream: false
+            // };
 
             // 生成临时文件路径
-            const tmpFilePath = path.join(os.tmpdir(), 'curl-body.json');
+            // const tmpFilePath = path.join(os.tmpdir(), 'curl-body.json');
             
             // 写入请求体到临时文件
-            fs.writeFileSync(tmpFilePath, JSON.stringify(requestBody, null, 2), 'utf8');
+//             fs.writeFileSync(tmpFilePath, JSON.stringify(requestBody, null, 2), 'utf8');
             
-            console.log('\n调试用命令（分2步执行）：');
-            console.log('\n1. 设置API密钥：');
-            console.log(`export API_KEY='${openAIClient.apiKey}'`);
+//             console.log('\n调试用命令（分2步执行）：');
+//             console.log('\n1. 设置API密钥：');
+//             console.log(`export API_KEY='${openAIClient.apiKey}'`);
             
-            console.log('\n2. 执行CURL命令：');
-            console.log(`curl -X POST \\
-  'https://api.siliconflow.cn/v1/chat/completions' \\
-  -H 'Content-Type: application/json' \\
-  -H "Authorization: Bearer $API_KEY" \\
-  -d "@${tmpFilePath}"`);
-            console.log('\n提示：测试完成后可以删除临时文件：');
-            console.log(`rm ${tmpFilePath}`);
-            console.log('\n');
+//             console.log('\n2. 执行CURL命令：');
+//             console.log(`curl -X POST \\
+//   'https://api.siliconflow.cn/v1/chat/completions' \\
+//   -H 'Content-Type: application/json' \\
+//   -H "Authorization: Bearer $API_KEY" \\
+//   -d "@${tmpFilePath}"`);
+//             console.log('\n提示：测试完成后可以删除临时文件：');
+//             console.log(`rm ${tmpFilePath}`);
+//             console.log('\n');
 
             response = await withTimeout(
                 openAIClient.chat.completions.create({
