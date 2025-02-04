@@ -22,16 +22,36 @@ npm install -g @terryso/git-auto-commit
 
 1. Ensure your project is a Git repository
 2. Add files to the staging area
-3. Run the command:
-
+3. Configure API Key:
+```bash
+git-auto-commit config set apiKey "your-api-key"
+```
+4. Run the command:
 ```bash
 git-auto-commit [options]
 ```
 
 ### Command Options
 
-- `--language <zh|en>`: Set the commit message language (default: Chinese)
-- `--auto`: Enable automatic commit mode, skip confirmation
+- `--en`: Generate commit message in English (default: Chinese)
+- `-y, --auto-confirm`: Enable auto-confirm mode, skip confirmation
+- `config`: Configuration management
+  - `set <key> <value>`: Set a configuration value
+  - `get <key>`: Get a configuration value
+  - `list`: List all configurations
+  - `remove <key>`: Remove a configuration value
+
+Examples:
+```bash
+# Use English, auto-confirm
+git-auto-commit --en -y
+
+# Use Chinese, manual confirmation
+git-auto-commit
+
+# Configure API Key
+git-auto-commit config set apiKey "your-api-key"
+```
 
 The tool will:
 1. Analyze current code changes
@@ -39,15 +59,27 @@ The tool will:
 3. Display the generated commit message and wait for confirmation (unless --auto option is used)
 4. Execute the commit
 
-## Environment Variables
+## API Key Configuration
 
-Before using, you need to set the following environment variable:
-
+### Method 1: Configuration Command (Recommended)
 ```bash
-SILICONFLOW_API_KEY=your-api-key
+git-auto-commit config set apiKey "your-api-key"
 ```
 
-You can set this by creating a `.env` file or setting it in your system environment.
+### Method 2: Configuration File
+Manually edit the configuration file:
+```bash
+mkdir -p ~/.config/git-auto-commit
+echo '{"apiKey": "your-api-key"}' > ~/.config/git-auto-commit/config.json
+```
+
+### Important Notes
+1. Never commit your API Key to the repository
+2. Configuration file location: ~/.config/git-auto-commit/config.json
+3. How to get API Key:
+   1. Visit https://siliconflow.cn
+   2. Register/Login to your account
+   3. Create API Key in the console
 
 ## Commit Message Format
 

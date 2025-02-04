@@ -22,16 +22,36 @@ npm install -g @terryso/git-auto-commit
 
 1. 确保你的项目是一个 Git 仓库
 2. 添加需要提交的文件到暂存区
-3. 运行命令：
-
+3. 配置 API Key：
+```bash
+git-auto-commit config set apiKey "your-api-key"
+```
+4. 运行命令：
 ```bash
 git-auto-commit [选项]
 ```
 
 ### 命令选项
 
-- `--language <zh|en>`: 设置提交信息的语言（默认：中文）
-- `--auto`: 启用自动提交模式，跳过确认步骤
+- `--en`: 使用英文生成提交信息（默认：中文）
+- `-y, --auto-confirm`: 启用自动确认模式，跳过确认步骤
+- `config`: 配置管理
+  - `set <key> <value>`: 设置配置项
+  - `get <key>`: 获取配置项
+  - `list`: 列出所有配置
+  - `remove <key>`: 删除配置项
+
+示例：
+```bash
+# 使用英文，自动确认
+git-auto-commit --en -y
+
+# 使用中文，手动确认
+git-auto-commit
+
+# 配置 API Key
+git-auto-commit config set apiKey "your-api-key"
+```
 
 工具会：
 1. 分析当前的代码变更
@@ -39,15 +59,27 @@ git-auto-commit [选项]
 3. 根据设置显示生成的提交信息并等待确认（除非使用 --auto 选项）
 4. 执行提交
 
-## 环境变量
+## API Key 配置
 
-在使用之前，你需要设置以下环境变量：
-
+### 方法一：配置命令（推荐）
 ```bash
-SILICONFLOW_API_KEY=你的API密钥
+git-auto-commit config set apiKey "your-api-key"
 ```
 
-你可以通过创建 `.env` 文件或在系统中设置环境变量来完成配置。
+### 方法二：配置文件
+手动编辑配置文件：
+```bash
+mkdir -p ~/.config/git-auto-commit
+echo '{"apiKey": "your-api-key"}' > ~/.config/git-auto-commit/config.json
+```
+
+### 注意事项
+1. 请勿将 API Key 提交到代码仓库
+2. 配置文件位于：~/.config/git-auto-commit/config.json
+3. API Key 获取方式：
+   1. 访问 https://siliconflow.cn
+   2. 注册/登录您的账号
+   3. 在控制台中创建 API 密钥
 
 ## 提交信息格式
 
