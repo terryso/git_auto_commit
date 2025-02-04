@@ -1,6 +1,6 @@
 {
   "name": "git-auto-commit",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "自动化 Git 提交工具",
   "main": "dist/index.js",
   "bin": {
