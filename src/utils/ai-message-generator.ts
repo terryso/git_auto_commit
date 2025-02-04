@@ -27,13 +27,17 @@ interface CommitOptions {
 
 // 带超时的 Promise
 function withTimeout<T>(promise: Promise<T>, timeout: number): Promise<T> {
+    let timeoutId: NodeJS.Timeout;
+    
+    const timeoutPromise = new Promise<T>((_, reject) => {
+        timeoutId = setTimeout(() => {
+            reject(new Error('Request timeout'));
+        }, timeout);
+    });
+
     return Promise.race([
-        promise,
-        new Promise<T>((_, reject) => {
-            setTimeout(() => {
-                reject(new Error('Request timeout'));
-            }, timeout);
-        })
+        promise.finally(() => clearTimeout(timeoutId)),
+        timeoutPromise
     ]);
 }
 

@@ -41,7 +41,15 @@ describe('ai-message-generator', () => {
         } as any;
     });
 
-    afterEach(() => {
+    afterEach(async () => {
+        // 清理所有计时器
+        const clock = sinon.useFakeTimers();
+        clock.restore();
+        
+        // 确保所有异步操作完成
+        await Promise.resolve();
+        
+        // 恢复所有存根
         sinon.restore();
     });
 

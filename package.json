@@ -8,6 +8,7 @@
   },
   "scripts": {
     "test": "mocha -r ts-node/register 'src/**/*.test.ts'",
+    "test:ai": "mocha -r ts-node/register 'src/**/ai-message-generator.test.ts'",
     "test:bdd": "cucumber-js",
     "build": "tsc",
     "start": "node dist/index.js",
