@@ -8,6 +8,7 @@ import { mockOpenAIClient } from '../../src/utils/mock-openai-client';
 import sinon from 'sinon';
 import * as aiMessageGeneratorModule from '../../src/utils/ai-message-generator';
 import { ICustomWorld } from '../support/world';
+import * as config from '../../src/utils/config';
 
 declare module '@cucumber/cucumber' {
     interface World extends ICustomWorld {}
@@ -24,6 +25,10 @@ Before(async function() {
     const world = this as unknown as ICustomWorld;
     world.sandbox = sinon.createSandbox();
     world.generateAIMessageStub = world.sandbox.stub(aiMessageGeneratorModule, 'generateAIMessage');
+    
+    // 设置测试用的 API 密钥
+    const setApiKeyStub = world.sandbox.stub(config, 'getApiKey');
+    setApiKeyStub.returns('test-api-key-for-ci');
     
     // 确保测试目录存在
     if (!world.testRepoPath) {

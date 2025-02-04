@@ -139,6 +139,33 @@ type必须是：feat（新功能）/fix（修复）之一。
             console.log(options.language === 'en'
                 ? 'Waiting for AI response...'
                 : '正在等待 AI 响应...');
+
+            // 输出调试用的 CURL 命令
+            const requestBody = {
+                model: "deepseek-ai/DeepSeek-V3",
+                messages: messages,
+                temperature: 0.3,
+                max_tokens: 256,
+                stream: false
+            };
+
+            console.log('\n调试用命令（分3步执行）：');
+            console.log('\n1. 创建临时文件：');
+            console.log('cat > /tmp/curl-body.json << EOF');
+            console.log(JSON.stringify(requestBody, null, 2));
+            console.log('EOF');
+            
+            console.log('\n2. 设置API密钥：');
+            console.log(`export API_KEY='${openAIClient.apiKey}'`);
+            
+            console.log('\n3. 执行CURL命令：');
+            console.log(`curl -X POST \\
+  'https://api.siliconflow.cn/v1/chat/completions' \\
+  -H 'Content-Type: application/json' \\
+  -H "Authorization: Bearer $API_KEY" \\
+  -d "@/tmp/curl-body.json"`);
+            console.log('\n');
+
             response = await withTimeout(
                 openAIClient.chat.completions.create({
                     model: "deepseek-ai/DeepSeek-V3",
