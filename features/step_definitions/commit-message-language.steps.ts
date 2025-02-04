@@ -33,6 +33,10 @@ Before(async function() {
     world.gitClient = simpleGit(world.testRepoPath);
     await world.gitClient.init();
     
+    // 设置 Git 配置
+    await world.gitClient.addConfig('user.name', 'Test User');
+    await world.gitClient.addConfig('user.email', 'test@example.com');
+    
     // 创建测试文件
     await writeFile(path.join(world.testRepoPath, 'test.txt'), 'test content');
 });
