@@ -139,6 +139,108 @@ describe('git-auto-commit', () => {
             expect(gitStub.checkIsRepo.called).to.be.true;
             expect(gitStub.status.called).to.be.true;
         });
+
+        describe('语言选项', () => {
+            it('应该默认生成中文提交信息', async () => {
+                // 设置存根
+                gitStub.checkIsRepo.resolves(true);
+                gitStub.status.resolves({ isClean: () => false } as StatusResult);
+                generateAIMessageStub.withArgs(
+                    gitStub,
+                    mockOpenAIClient,
+                    { language: 'zh' }
+                ).resolves('feat: 测试提交信息');
+                
+                // 执行测试
+                const message = await gitAutoCommit.generateCommitMessage(gitStub, mockOpenAIClient);
+                
+                // 验证结果
+                expect(message).to.equal('feat: 测试提交信息');
+                expect(generateAIMessageStub.calledWith(
+                    gitStub,
+                    mockOpenAIClient,
+                    { language: 'zh' }
+                )).to.be.true;
+            });
+
+            it('应该能生成英文提交信息', async () => {
+                // 设置存根
+                gitStub.checkIsRepo.resolves(true);
+                gitStub.status.resolves({ isClean: () => false } as StatusResult);
+                generateAIMessageStub.withArgs(
+                    gitStub,
+                    mockOpenAIClient,
+                    { language: 'en' }
+                ).resolves('feat: test commit message');
+                
+                // 执行测试
+                const message = await gitAutoCommit.generateCommitMessage(gitStub, mockOpenAIClient, { language: 'en' });
+                
+                // 验证结果
+                expect(message).to.equal('feat: test commit message');
+                expect(generateAIMessageStub.calledWith(
+                    gitStub,
+                    mockOpenAIClient,
+                    { language: 'en' }
+                )).to.be.true;
+            });
+
+            it('应该在英文模式下处理AI服务错误', async () => {
+                // 设置存根
+                gitStub.checkIsRepo.resolves(true);
+                gitStub.status.resolves({ isClean: () => false } as StatusResult);
+                generateAIMessageStub.withArgs(
+                    gitStub,
+                    mockOpenAIClient,
+                    { language: 'en' }
+                ).rejects(new Error('AI Service Error: Service Temporarily Unavailable'));
+                
+                // 执行测试
+                await expect(gitAutoCommit.generateCommitMessage(gitStub, mockOpenAIClient, { language: 'en' }))
+                    .to.be.rejectedWith('AI Service Error: Service Temporarily Unavailable');
+                
+                expect(gitStub.checkIsRepo.called).to.be.true;
+                expect(gitStub.status.called).to.be.true;
+            });
+
+            it('应该生成符合英文语法规范的提交信息', async () => {
+                // 设置存根
+                gitStub.checkIsRepo.resolves(true);
+                gitStub.status.resolves({ isClean: () => false } as StatusResult);
+                generateAIMessageStub.withArgs(
+                    gitStub,
+                    mockOpenAIClient,
+                    { language: 'en' }
+                ).resolves('feat: add new feature for user authentication');
+                
+                // 执行测试
+                const message = await gitAutoCommit.generateCommitMessage(gitStub, mockOpenAIClient, { language: 'en' });
+                
+                // 验证结果
+                expect(message).to.match(/^(feat|fix|docs|style|refactor|test|chore):/);
+                expect(message).to.match(/^[a-z]+: [a-z]/); // 确保类型和描述都是小写开头
+                expect(message.split(': ')[1]).to.match(/^[a-z].*[^.]$/); // 描述以小写开头，不以句号结尾
+            });
+
+            it('应该在英文模式下生成正确的提交类型', async () => {
+                // 设置存根
+                gitStub.checkIsRepo.resolves(true);
+                gitStub.status.resolves({ isClean: () => false } as StatusResult);
+                generateAIMessageStub.withArgs(
+                    gitStub,
+                    mockOpenAIClient,
+                    { language: 'en' }
+                ).resolves('feat: implement user authentication');
+                
+                // 执行测试
+                const message = await gitAutoCommit.generateCommitMessage(gitStub, mockOpenAIClient, { language: 'en' });
+                
+                // 验证结果
+                const validTypes = ['feat', 'fix', 'docs', 'style', 'refactor', 'test', 'chore'];
+                const type = message.split(':')[0];
+                expect(validTypes).to.include(type);
+            });
+        });
     });
 
     describe('main', () => {
@@ -270,6 +372,398 @@ describe('git-auto-commit', () => {
             // 验证结果
             expect(consoleErrorStub.calledWith('错误：', 'AI服务错误：服务暂时不可用')).to.be.true;
             expect(processExitStub.calledWith(1)).to.be.true;
+        });
+
+        it('应该在自动确认模式下自动执行提交', async () => {
+            // 设置存根
+            gitStub.checkIsRepo.resolves(true);
+            gitStub.status.resolves({ 
+                isClean: () => false,
+                staged: ['file1.ts'],
+                modified: ['file2.ts'],
+                deleted: [],
+                not_added: ['file3.ts'],
+                conflicted: [],
+                created: [],
+                renamed: [],
+                files: [],
+                ahead: 0,
+                behind: 0,
+                current: 'main',
+                tracking: null,
+                detached: false
+            } as StatusResult);
+
+            // 执行测试
+            await gitAutoCommit.main(gitStub, mockOpenAIClient, true);
+
+            // 验证结果
+            expect(gitStub.add.calledWith(['file1.ts', 'file2.ts', 'file3.ts'])).to.be.true;
+            expect(gitStub.commit.calledWith('feat: 测试提交信息')).to.be.true;
+            expect(consoleLogStub.calledWith('提交成功！')).to.be.true;
+            expect(mockReadline.question.called).to.be.false;
+        });
+
+        it('应该在自动确认模式下处理没有可提交文件的情况', async () => {
+            // 设置存根
+            gitStub.checkIsRepo.resolves(true);
+            gitStub.status.resolves({ 
+                isClean: () => true,
+                staged: [],
+                modified: [],
+                deleted: [],
+                not_added: [],
+                conflicted: [],
+                created: [],
+                renamed: [],
+                files: [],
+                ahead: 0,
+                behind: 0,
+                current: 'main',
+                tracking: null,
+                detached: false
+            } as StatusResult);
+
+            // 模拟 generateCommitMessage 抛出错误
+            generateAIMessageStub.rejects(new Error('没有检测到需要提交的变更'));
+
+            // 执行测试
+            await gitAutoCommit.main(gitStub, mockOpenAIClient, true);
+
+            // 验证结果
+            expect(gitStub.add.called).to.be.false;
+            expect(gitStub.commit.called).to.be.false;
+            expect(consoleErrorStub.calledWith('错误：', '没有检测到需要提交的变更')).to.be.true;
+            expect(processExitStub.calledWith(1)).to.be.true;
+        });
+
+        it('应该在自动确认模式下处理错误情况', async () => {
+            // 设置存根
+            gitStub.checkIsRepo.resolves(true);
+            gitStub.status.resolves({ 
+                isClean: () => false,
+                staged: ['file1.ts'],
+                modified: [],
+                deleted: [],
+                not_added: [],
+                conflicted: [],
+                created: [],
+                renamed: [],
+                files: [],
+                ahead: 0,
+                behind: 0,
+                current: 'main',
+                tracking: null,
+                detached: false
+            } as StatusResult);
+            gitStub.add.rejects(new Error('Git错误'));
+
+            // 执行测试
+            await gitAutoCommit.main(gitStub, mockOpenAIClient, true);
+
+            // 验证结果
+            expect(consoleErrorStub.calledWith('错误：', 'Git错误')).to.be.true;
+            expect(processExitStub.calledWith(1)).to.be.true;
+        });
+
+        describe('自动确认模式', () => {
+            it('应该在使用 --auto-confirm 参数时自动执行提交', async () => {
+                // 设置存根
+                gitStub.checkIsRepo.resolves(true);
+                gitStub.status.resolves({ 
+                    isClean: () => false,
+                    staged: ['file1.ts'],
+                    modified: ['file2.ts'],
+                    deleted: [],
+                    not_added: [],
+                    conflicted: [],
+                    created: [],
+                    renamed: [],
+                    files: [],
+                    ahead: 0,
+                    behind: 0,
+                    current: 'main',
+                    tracking: null,
+                    detached: false
+                } as StatusResult);
+
+                // 执行测试
+                await gitAutoCommit.main(gitStub, mockOpenAIClient, true);
+
+                // 验证结果
+                expect(gitStub.add.calledWith(['file1.ts', 'file2.ts'])).to.be.true;
+                expect(gitStub.commit.calledWith('feat: 测试提交信息')).to.be.true;
+                expect(consoleLogStub.calledWith('提交成功！')).to.be.true;
+                expect(mockReadline.question.called).to.be.false;
+            });
+
+            it('应该在使用 -y 参数时自动执行提交', async () => {
+                // 设置存根
+                gitStub.checkIsRepo.resolves(true);
+                gitStub.status.resolves({ 
+                    isClean: () => false,
+                    staged: ['file1.ts'],
+                    modified: ['file2.ts'],
+                    deleted: [],
+                    not_added: [],
+                    conflicted: [],
+                    created: [],
+                    renamed: [],
+                    files: [],
+                    ahead: 0,
+                    behind: 0,
+                    current: 'main',
+                    tracking: null,
+                    detached: false
+                } as StatusResult);
+
+                // 执行测试
+                await gitAutoCommit.main(gitStub, mockOpenAIClient, true);
+
+                // 验证结果
+                expect(gitStub.add.calledWith(['file1.ts', 'file2.ts'])).to.be.true;
+                expect(gitStub.commit.calledWith('feat: 测试提交信息')).to.be.true;
+                expect(consoleLogStub.calledWith('提交成功！')).to.be.true;
+                expect(mockReadline.question.called).to.be.false;
+            });
+
+            it('应该在自动确认模式下处理错误情况', async () => {
+                // 设置存根
+                gitStub.checkIsRepo.resolves(true);
+                gitStub.status.resolves({ 
+                    isClean: () => false,
+                    staged: ['file1.ts'],
+                    modified: ['file2.ts'],
+                    deleted: [],
+                    not_added: [],
+                    conflicted: [],
+                    created: [],
+                    renamed: [],
+                    files: [],
+                    ahead: 0,
+                    behind: 0,
+                    current: 'main',
+                    tracking: null,
+                    detached: false
+                } as StatusResult);
+                generateAIMessageStub.rejects(new Error('AI服务错误：服务暂时不可用'));
+
+                // 执行测试
+                await gitAutoCommit.main(gitStub, mockOpenAIClient, true);
+
+                // 验证结果
+                expect(consoleErrorStub.calledWith('错误：', 'AI服务错误：服务暂时不可用')).to.be.true;
+                expect(processExitStub.calledWith(1)).to.be.true;
+                expect(gitStub.commit.called).to.be.false;
+            });
+
+            it('应该在自动确认模式下处理没有变更的情况', async () => {
+                // 设置存根
+                gitStub.checkIsRepo.resolves(true);
+                gitStub.status.resolves({ 
+                    isClean: () => true,
+                    staged: [],
+                    modified: [],
+                    deleted: [],
+                    not_added: [],
+                    conflicted: [],
+                    created: [],
+                    renamed: [],
+                    files: [],
+                    ahead: 0,
+                    behind: 0,
+                    current: 'main',
+                    tracking: null,
+                    detached: false
+                } as StatusResult);
+
+                // 执行测试
+                await gitAutoCommit.main(gitStub, mockOpenAIClient, true);
+
+                // 验证结果
+                expect(consoleErrorStub.calledWith('错误：', '没有检测到需要提交的变更')).to.be.true;
+                expect(processExitStub.calledWith(1)).to.be.true;
+                expect(gitStub.commit.called).to.be.false;
+            });
+        });
+
+        describe('语言选项', () => {
+            it('应该在英文模式下自动执行提交', async () => {
+                // 设置存根
+                gitStub.checkIsRepo.resolves(true);
+                gitStub.status.resolves({ 
+                    isClean: () => false,
+                    staged: ['file1.ts'],
+                    modified: ['file2.ts'],
+                    deleted: [],
+                    not_added: [],
+                    conflicted: [],
+                    created: [],
+                    renamed: [],
+                    files: [],
+                    ahead: 0,
+                    behind: 0,
+                    current: 'main',
+                    tracking: null,
+                    detached: false
+                } as StatusResult);
+                generateAIMessageStub.withArgs(
+                    gitStub,
+                    mockOpenAIClient,
+                    { language: 'en' }
+                ).resolves('feat: test commit message');
+
+                // 执行测试
+                await gitAutoCommit.main(gitStub, mockOpenAIClient, true, { language: 'en' });
+
+                // 验证结果
+                expect(gitStub.add.calledWith(['file1.ts', 'file2.ts'])).to.be.true;
+                expect(gitStub.commit.calledWith('feat: test commit message')).to.be.true;
+                expect(consoleLogStub.calledWith('Commit successful!')).to.be.true;
+                expect(mockReadline.question.called).to.be.false;
+            });
+
+            it('应该在英文模式下等待用户确认', async () => {
+                // 设置存根
+                gitStub.checkIsRepo.resolves(true);
+                gitStub.status.resolves({ 
+                    isClean: () => false,
+                    staged: ['file1.ts'],
+                    modified: ['file2.ts'],
+                    deleted: [],
+                    not_added: [],
+                    conflicted: [],
+                    created: [],
+                    renamed: [],
+                    files: [],
+                    ahead: 0,
+                    behind: 0,
+                    current: 'main',
+                    tracking: null,
+                    detached: false
+                } as StatusResult);
+                generateAIMessageStub.withArgs(
+                    gitStub,
+                    mockOpenAIClient,
+                    { language: 'en' }
+                ).resolves('feat: test commit message');
+                
+                // 模拟用户输入 'y'
+                mockReadline.question.callsFake((query: string, callback: (answer: string) => void) => {
+                    callback('y');
+                });
+
+                // 执行测试
+                await gitAutoCommit.main(gitStub, mockOpenAIClient, false, { language: 'en' });
+
+                // 验证结果
+                expect(gitStub.add.calledWith(['file1.ts', 'file2.ts'])).to.be.true;
+                expect(gitStub.commit.calledWith('feat: test commit message')).to.be.true;
+                expect(consoleLogStub.calledWith('Commit successful!')).to.be.true;
+                expect(mockReadline.question.calledWith('\nConfirm commit? (y/n) ')).to.be.true;
+            });
+
+            it('应该在英文模式下处理错误情况', async () => {
+                // 设置存根
+                gitStub.checkIsRepo.resolves(true);
+                gitStub.status.resolves({ 
+                    isClean: () => false,
+                    staged: ['file1.ts'],
+                    modified: ['file2.ts'],
+                    deleted: [],
+                    not_added: [],
+                    conflicted: [],
+                    created: [],
+                    renamed: [],
+                    files: [],
+                    ahead: 0,
+                    behind: 0,
+                    current: 'main',
+                    tracking: null,
+                    detached: false
+                } as StatusResult);
+                generateAIMessageStub.withArgs(
+                    gitStub,
+                    mockOpenAIClient,
+                    { language: 'en' }
+                ).rejects(new Error('AI Service Error: Service Temporarily Unavailable'));
+
+                // 执行测试
+                await gitAutoCommit.main(gitStub, mockOpenAIClient, true, { language: 'en' });
+
+                // 验证结果
+                expect(consoleErrorStub.calledWith('Error: ', 'AI Service Error: Service Temporarily Unavailable')).to.be.true;
+                expect(processExitStub.calledWith(1)).to.be.true;
+                expect(gitStub.commit.called).to.be.false;
+            });
+
+            it('应该正确处理 --language 参数', async () => {
+                // 设置存根
+                gitStub.checkIsRepo.resolves(true);
+                gitStub.status.resolves({ 
+                    isClean: () => false,
+                    staged: ['file1.ts'],
+                    modified: [],
+                    deleted: [],
+                    not_added: [],
+                    conflicted: [],
+                    created: [],
+                    renamed: [],
+                    files: [{ path: 'file1.ts', index: 'A', working_dir: 'M' }],
+                    ahead: 0,
+                    behind: 0,
+                    current: 'main',
+                    tracking: null,
+                    detached: false
+                } as StatusResult);
+                gitStub.add.resolves();
+                gitStub.commit.resolves();
+                generateAIMessageStub.resolves('feat: implement new feature');
+
+                // 执行测试
+                await gitAutoCommit.main(gitStub, mockOpenAIClient, true, { language: 'en' });
+
+                // 验证结果
+                expect(generateAIMessageStub.calledWith(
+                    gitStub,
+                    mockOpenAIClient,
+                    { language: 'en' }
+                )).to.be.true;
+                expect(gitStub.commit.called).to.be.true;
+            });
+
+            it('应该在英文模式下正确显示操作结果', async () => {
+                // 设置存根
+                gitStub.checkIsRepo.resolves(true);
+                gitStub.status.resolves({ 
+                    isClean: () => false,
+                    staged: ['file1.ts'],
+                    modified: [],
+                    deleted: [],
+                    not_added: [],
+                    conflicted: [],
+                    created: [],
+                    renamed: [],
+                    files: [{ path: 'file1.ts', index: 'A', working_dir: 'M' }],
+                    ahead: 0,
+                    behind: 0,
+                    current: 'main',
+                    tracking: null,
+                    detached: false
+                } as StatusResult);
+                gitStub.add.resolves();
+                gitStub.commit.resolves();
+                generateAIMessageStub.resolves('feat: implement new feature');
+
+                // 执行测试
+                await gitAutoCommit.main(gitStub, mockOpenAIClient, true, { language: 'en' });
+
+                // 验证结果
+                expect(consoleLogStub.calledWith(sinon.match(/Files to be committed/))).to.be.true;
+                expect(consoleLogStub.calledWith(sinon.match(/Staged files/))).to.be.true;
+                expect(consoleLogStub.calledWith(sinon.match(/Generated commit message/))).to.be.true;
+                expect(consoleLogStub.calledWith(sinon.match(/Commit successful/))).to.be.true;
+            });
         });
     });
 }); 

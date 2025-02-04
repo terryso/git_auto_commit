@@ -1,24 +1,42 @@
 import { simpleGit, SimpleGit } from 'simple-git';
-import { generateAIMessage } from '../utils/ai-message-generator';
 import * as readline from 'readline';
 import { OpenAI } from 'openai';
-import * as dotenv from 'dotenv';
+import { getApiKey } from '../utils/config';
+import { generateAIMessage } from '../utils/ai-message-generator';
 
-// 加载环境变量
-dotenv.config();
+// 创建 OpenAI client
+function createOpenAIClient(): OpenAI {
+    const apiKey = getApiKey();
+    if (!apiKey) {
+        throw new Error(`请先设置 API 密钥。
 
-// 检查必要的环境变量
-if (!process.env.SILICONFLOW_API_KEY) {
-    throw new Error('请在 .env 文件中设置 SILICONFLOW_API_KEY');
+您可以通过以下命令设置 API 密钥：
+git-auto-commit config set-api-key <your-api-key>
+
+如果您还没有 API 密钥，可以通过以下步骤获取：
+1. 访问 https://siliconflow.cn
+2. 注册/登录您的账号
+3. 在控制台中创建 API 密钥`);
+    }
+
+    return new OpenAI({
+        apiKey,
+        baseURL: 'https://api.siliconflow.cn/v1',
+        defaultHeaders: {
+            'Content-Type': 'application/json'
+        }
+    });
 }
 
-// 创建默认的 OpenAI client
-const defaultOpenAIClient = new OpenAI({
-    apiKey: process.env.SILICONFLOW_API_KEY,
-    baseURL: 'https://api.siliconflow.cn/v1'
-});
+interface CommitOptions {
+    language?: 'zh' | 'en';
+}
 
-export async function generateCommitMessage(git: SimpleGit = simpleGit(), openAIClient: OpenAI = defaultOpenAIClient): Promise<string> {
+export async function generateCommitMessage(
+    git: SimpleGit = simpleGit(),
+    openAIClient?: OpenAI,
+    options: CommitOptions = { language: 'zh' }
+): Promise<string> {
     // 检查是否是Git仓库
     const isRepo = await git.checkIsRepo();
     if (!isRepo) {
@@ -34,52 +52,59 @@ export async function generateCommitMessage(git: SimpleGit = simpleGit(), openAI
     }
 
     // 使用 AI 生成提交信息
-    const message = await generateAIMessage(git, openAIClient);
+    const message = await generateAIMessage(git, openAIClient || createOpenAIClient(), options);
     
     return message;
 }
 
-export async function main(git: SimpleGit = simpleGit(), openAIClient: OpenAI = defaultOpenAIClient) {
+export async function main(
+    git: SimpleGit = simpleGit(), 
+    openAIClient?: OpenAI,
+    autoConfirm: boolean = false,
+    options: CommitOptions = { language: 'zh' }
+) {
     try {
         // 生成提交信息
-        const message = await generateCommitMessage(git, openAIClient);
+        const message = await generateCommitMessage(git, openAIClient, options);
         
         // 获取仓库状态
         const status = await git.status();
         
         // 显示将要提交的文件
-        console.log('\n将要提交的文件：');
+        console.log(options.language === 'en' ? '\nFiles to be committed:' : '\n将要提交的文件：');
         if (status.staged.length > 0) {
-            console.log('已暂存的文件：');
+            console.log(options.language === 'en' ? 'Staged files:' : '已暂存的文件：');
             status.staged.forEach(file => console.log(`  ${file}`));
         }
         if (status.modified.length > 0) {
-            console.log('已修改的文件：');
+            console.log(options.language === 'en' ? 'Modified files:' : '已修改的文件：');
             status.modified.forEach(file => console.log(`  ${file}`));
         }
         if (status.deleted.length > 0) {
-            console.log('已删除的文件：');
+            console.log(options.language === 'en' ? 'Deleted files:' : '已删除的文件：');
             status.deleted.forEach(file => console.log(`  ${file}`));
         }
         
-        console.log(`\n生成的提交信息：${message}`);
+        console.log(options.language === 'en' ? `\nGenerated commit message: ${message}` : `\n生成的提交信息：${message}`);
         
-        // 在测试环境中跳过用户确认
-        if (process.env.NODE_ENV === 'test') {
-            // 只提交已跟踪和已暂存的文件
-            const filesToCommit = [
-                ...status.staged,
-                ...status.modified,
-                ...status.deleted
-            ];
-            
-            if (filesToCommit.length > 0) {
-                await git.add(filesToCommit);
-                await git.commit(message);
-                console.log('提交成功！');
-            } else {
-                console.log('没有可提交的文件');
-            }
+        // 准备要提交的文件
+        const filesToCommit = [
+            ...status.staged,
+            ...status.modified,
+            ...status.deleted,
+            ...status.not_added
+        ];
+        
+        if (filesToCommit.length === 0) {
+            console.log(options.language === 'en' ? 'No files to commit' : '没有可提交的文件');
+            return;
+        }
+
+        // 在测试环境中或自动确认模式下跳过用户确认
+        if (process.env.NODE_ENV === 'test' || autoConfirm) {
+            await git.add(filesToCommit);
+            await git.commit(message);
+            console.log(options.language === 'en' ? 'Commit successful!' : '提交成功！');
             return;
         }
 
@@ -91,36 +116,20 @@ export async function main(git: SimpleGit = simpleGit(), openAIClient: OpenAI = 
 
         // 询问用户是否确认提交
         const answer = await new Promise<string>(resolve => {
-            rl.question('\n确认提交？(y/n) ', resolve);
+            rl.question(options.language === 'en' ? '\nConfirm commit? (y/n) ' : '\n确认提交？(y/n) ', resolve);
         });
         rl.close();
 
         if (answer.toLowerCase() === 'n') {
-            console.log('已取消提交');
+            console.log(options.language === 'en' ? 'Commit cancelled' : '已取消提交');
             return;
         }
 
-        // 只提交已跟踪和已暂存的文件
-        const filesToCommit = [
-            ...status.staged,
-            ...status.modified,
-            ...status.deleted
-        ];
-        
-        if (filesToCommit.length > 0) {
-            await git.add(filesToCommit);
-            await git.commit(message);
-            console.log('提交成功！');
-        } else {
-            console.log('没有可提交的文件');
-        }
+        await git.add(filesToCommit);
+        await git.commit(message);
+        console.log(options.language === 'en' ? 'Commit successful!' : '提交成功！');
     } catch (error: any) {
-        console.error('错误：', error.message);
+        console.error(options.language === 'en' ? 'Error: ' : '错误：', error.message);
         process.exit(1);
     }
-}
-
-// 当直接运行此文件时执行
-if (require.main === module) {
-    main();
 } 
