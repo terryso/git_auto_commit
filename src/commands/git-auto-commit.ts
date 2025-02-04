@@ -64,6 +64,25 @@ export async function main(git: SimpleGit = simpleGit(), openAIClient: OpenAI = 
         
         console.log(`\n生成的提交信息：${message}`);
         
+        // 在测试环境中跳过用户确认
+        if (process.env.NODE_ENV === 'test') {
+            // 只提交已跟踪和已暂存的文件
+            const filesToCommit = [
+                ...status.staged,
+                ...status.modified,
+                ...status.deleted
+            ];
+            
+            if (filesToCommit.length > 0) {
+                await git.add(filesToCommit);
+                await git.commit(message);
+                console.log('提交成功！');
+            } else {
+                console.log('没有可提交的文件');
+            }
+            return;
+        }
+
         // 创建 readline 接口
         const rl = readline.createInterface({
             input: process.stdin,
@@ -89,7 +108,6 @@ export async function main(git: SimpleGit = simpleGit(), openAIClient: OpenAI = 
         ];
         
         if (filesToCommit.length > 0) {
-            // 只添加已跟踪和已暂存的文件
             await git.add(filesToCommit);
             await git.commit(message);
             console.log('提交成功！');

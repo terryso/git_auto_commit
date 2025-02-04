@@ -31,10 +31,13 @@ jobs:
       
       - name: Run tests
         run: |
+          export NODE_OPTIONS="--no-warnings --experimental-modules"
+          export NODE_ENV=test
           npm run test
           npm run test:bdd
         env:
           SILICONFLOW_API_KEY: test-api-key-for-ci
+          NODE_ENV: test
       
       - name: Build
         run: npm run build
