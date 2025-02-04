@@ -1,6 +1,9 @@
 import { OpenAI } from 'openai';
 import { SimpleGit } from 'simple-git';
 import { ChatCompletionMessageParam } from 'openai/resources/chat';
+import * as fs from 'fs';
+import * as path from 'path';
+import * as os from 'os';
 
 // diff 大小限制（字符数）
 // DeepSeek-V3 模型支持 64K tokens 上下文
@@ -149,21 +152,24 @@ type必须是：feat（新功能）/fix（修复）之一。
                 stream: false
             };
 
-            console.log('\n调试用命令（分3步执行）：');
-            console.log('\n1. 创建临时文件：');
-            console.log('cat > /tmp/curl-body.json << EOF');
-            console.log(JSON.stringify(requestBody, null, 2));
-            console.log('EOF');
+            // 生成临时文件路径
+            const tmpFilePath = path.join(os.tmpdir(), 'curl-body.json');
             
-            console.log('\n2. 设置API密钥：');
+            // 写入请求体到临时文件
+            fs.writeFileSync(tmpFilePath, JSON.stringify(requestBody, null, 2), 'utf8');
+            
+            console.log('\n调试用命令（分2步执行）：');
+            console.log('\n1. 设置API密钥：');
             console.log(`export API_KEY='${openAIClient.apiKey}'`);
             
-            console.log('\n3. 执行CURL命令：');
+            console.log('\n2. 执行CURL命令：');
             console.log(`curl -X POST \\
   'https://api.siliconflow.cn/v1/chat/completions' \\
   -H 'Content-Type: application/json' \\
   -H "Authorization: Bearer $API_KEY" \\
-  -d "@/tmp/curl-body.json"`);
+  -d "@${tmpFilePath}"`);
+            console.log('\n提示：测试完成后可以删除临时文件：');
+            console.log(`rm ${tmpFilePath}`);
             console.log('\n');
 
             response = await withTimeout(
