@@ -1,6 +1,6 @@
 {
   "name": "@terryso/git-auto-commit",
-  "version": "0.0.14",
+  "version": "0.0.15",
   "description": "自动化 Git 提交工具",
   "main": "dist/index.js",
   "bin": {
