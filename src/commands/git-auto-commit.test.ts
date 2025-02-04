@@ -352,12 +352,16 @@ describe('git-auto-commit', () => {
             // 设置存根
             gitStub.checkIsRepo.resolves(false);
 
-            // 执行测试
-            await gitAutoCommit.main(gitStub, mockOpenAIClient);
-
-            // 验证结果
-            expect(consoleErrorStub.calledWith('错误：', '当前目录不是有效的Git仓库')).to.be.true;
-            expect(processExitStub.calledWith(1)).to.be.true;
+            try {
+                // 执行测试
+                await gitAutoCommit.main(gitStub, mockOpenAIClient);
+                // 如果没有抛出错误，测试应该失败
+                expect.fail('应该抛出错误');
+            } catch (error: any) {
+                // 验证结果
+                expect(consoleErrorStub.calledWith('错误：', '当前目录不是有效的Git仓库')).to.be.true;
+                expect(processExitStub.calledWith(1)).to.be.true;
+            }
         });
 
         it('应该在AI服务不可用时显示错误信息并以非零状态码退出', async () => {
@@ -366,12 +370,16 @@ describe('git-auto-commit', () => {
             gitStub.status.resolves({ isClean: () => false } as StatusResult);
             generateAIMessageStub.rejects(new Error('AI服务错误：服务暂时不可用'));
 
-            // 执行测试
-            await gitAutoCommit.main(gitStub, mockOpenAIClient);
-
-            // 验证结果
-            expect(consoleErrorStub.calledWith('错误：', 'AI服务错误：服务暂时不可用')).to.be.true;
-            expect(processExitStub.calledWith(1)).to.be.true;
+            try {
+                // 执行测试
+                await gitAutoCommit.main(gitStub, mockOpenAIClient);
+                // 如果没有抛出错误，测试应该失败
+                expect.fail('应该抛出错误');
+            } catch (error: any) {
+                // 验证结果
+                expect(consoleErrorStub.calledWith('错误：', 'AI服务错误：服务暂时不可用')).to.be.true;
+                expect(processExitStub.calledWith(1)).to.be.true;
+            }
         });
 
         it('应该在自动确认模式下自动执行提交', async () => {
@@ -424,17 +432,17 @@ describe('git-auto-commit', () => {
                 detached: false
             } as StatusResult);
 
-            // 模拟 generateCommitMessage 抛出错误
-            generateAIMessageStub.rejects(new Error('没有检测到需要提交的变更'));
-
-            // 执行测试
-            await gitAutoCommit.main(gitStub, mockOpenAIClient, true);
-
-            // 验证结果
-            expect(gitStub.add.called).to.be.false;
-            expect(gitStub.commit.called).to.be.false;
-            expect(consoleErrorStub.calledWith('错误：', '没有检测到需要提交的变更')).to.be.true;
-            expect(processExitStub.calledWith(1)).to.be.true;
+            try {
+                // 执行测试
+                await gitAutoCommit.main(gitStub, mockOpenAIClient, true);
+                // 如果没有抛出错误，测试应该失败
+                expect.fail('应该抛出错误');
+            } catch (error: any) {
+                // 验证结果
+                expect(consoleErrorStub.calledWith('错误：', '没有检测到需要提交的变更')).to.be.true;
+                expect(processExitStub.calledWith(1)).to.be.true;
+                expect(gitStub.commit.called).to.be.false;
+            }
         });
 
         it('应该在自动确认模式下处理错误情况', async () => {
@@ -458,12 +466,16 @@ describe('git-auto-commit', () => {
             } as StatusResult);
             gitStub.add.rejects(new Error('Git错误'));
 
-            // 执行测试
-            await gitAutoCommit.main(gitStub, mockOpenAIClient, true);
-
-            // 验证结果
-            expect(consoleErrorStub.calledWith('错误：', 'Git错误')).to.be.true;
-            expect(processExitStub.calledWith(1)).to.be.true;
+            try {
+                // 执行测试
+                await gitAutoCommit.main(gitStub, mockOpenAIClient, true);
+                // 如果没有抛出错误，测试应该失败
+                expect.fail('应该抛出错误');
+            } catch (error: any) {
+                // 验证结果
+                expect(consoleErrorStub.calledWith('错误：', 'Git错误')).to.be.true;
+                expect(processExitStub.calledWith(1)).to.be.true;
+            }
         });
 
         describe('自动确认模式', () => {
@@ -548,13 +560,17 @@ describe('git-auto-commit', () => {
                 } as StatusResult);
                 generateAIMessageStub.rejects(new Error('AI服务错误：服务暂时不可用'));
 
-                // 执行测试
-                await gitAutoCommit.main(gitStub, mockOpenAIClient, true);
-
-                // 验证结果
-                expect(consoleErrorStub.calledWith('错误：', 'AI服务错误：服务暂时不可用')).to.be.true;
-                expect(processExitStub.calledWith(1)).to.be.true;
-                expect(gitStub.commit.called).to.be.false;
+                try {
+                    // 执行测试
+                    await gitAutoCommit.main(gitStub, mockOpenAIClient, true);
+                    // 如果没有抛出错误，测试应该失败
+                    expect.fail('应该抛出错误');
+                } catch (error: any) {
+                    // 验证结果
+                    expect(consoleErrorStub.calledWith('错误：', 'AI服务错误：服务暂时不可用')).to.be.true;
+                    expect(processExitStub.calledWith(1)).to.be.true;
+                    expect(gitStub.commit.called).to.be.false;
+                }
             });
 
             it('应该在自动确认模式下处理没有变更的情况', async () => {
@@ -577,13 +593,17 @@ describe('git-auto-commit', () => {
                     detached: false
                 } as StatusResult);
 
-                // 执行测试
-                await gitAutoCommit.main(gitStub, mockOpenAIClient, true);
-
-                // 验证结果
-                expect(consoleErrorStub.calledWith('错误：', '没有检测到需要提交的变更')).to.be.true;
-                expect(processExitStub.calledWith(1)).to.be.true;
-                expect(gitStub.commit.called).to.be.false;
+                try {
+                    // 执行测试
+                    await gitAutoCommit.main(gitStub, mockOpenAIClient, true);
+                    // 如果没有抛出错误，测试应该失败
+                    expect.fail('应该抛出错误');
+                } catch (error: any) {
+                    // 验证结果
+                    expect(consoleErrorStub.calledWith('错误：', '没有检测到需要提交的变更')).to.be.true;
+                    expect(processExitStub.calledWith(1)).to.be.true;
+                    expect(gitStub.commit.called).to.be.false;
+                }
             });
         });
 
@@ -682,19 +702,19 @@ describe('git-auto-commit', () => {
                     tracking: null,
                     detached: false
                 } as StatusResult);
-                generateAIMessageStub.withArgs(
-                    gitStub,
-                    mockOpenAIClient,
-                    { language: 'en' }
-                ).rejects(new Error('AI Service Error: Service Temporarily Unavailable'));
+                generateAIMessageStub.rejects(new Error('AI Service Error: Service Temporarily Unavailable'));
 
-                // 执行测试
-                await gitAutoCommit.main(gitStub, mockOpenAIClient, true, { language: 'en' });
-
-                // 验证结果
-                expect(consoleErrorStub.calledWith('Error: ', 'AI Service Error: Service Temporarily Unavailable')).to.be.true;
-                expect(processExitStub.calledWith(1)).to.be.true;
-                expect(gitStub.commit.called).to.be.false;
+                try {
+                    // 执行测试
+                    await gitAutoCommit.main(gitStub, mockOpenAIClient, true, { language: 'en' });
+                    // 如果没有抛出错误，测试应该失败
+                    expect.fail('应该抛出错误');
+                } catch (error: any) {
+                    // 验证结果
+                    expect(consoleErrorStub.calledWith('Error: ', 'AI Service Error: Service Temporarily Unavailable')).to.be.true;
+                    expect(processExitStub.calledWith(1)).to.be.true;
+                    expect(gitStub.commit.called).to.be.false;
+                }
             });
 
             it('应该正确处理 --language 参数', async () => {

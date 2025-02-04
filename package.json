@@ -30,8 +30,8 @@
     "@cucumber/cucumber-expressions": "^18.0.1",
     "commander": "^11.1.0",
     "dotenv": "^16.4.1",
-    "openai": "^4.24.1",
-    "simple-git": "^3.22.0"
+    "openai": "^4.20.1",
+    "simple-git": "^3.19.1"
   },
   "devDependencies": {
     "@cucumber/cucumber": "^10.3.1",

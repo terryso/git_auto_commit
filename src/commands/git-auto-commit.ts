@@ -105,6 +105,9 @@ export async function main(
             await git.add(filesToCommit);
             await git.commit(message);
             console.log(options.language === 'en' ? 'Commit successful!' : '提交成功！');
+            if (process.env.NODE_ENV !== 'test') {
+                process.exit(0);
+            }
             return;
         }
 
@@ -114,22 +117,37 @@ export async function main(
             output: process.stdout
         });
 
-        // 询问用户是否确认提交
-        const answer = await new Promise<string>(resolve => {
-            rl.question(options.language === 'en' ? '\nConfirm commit? (y/n) ' : '\n确认提交？(y/n) ', resolve);
-        });
-        rl.close();
+        try {
+            // 询问用户是否确认提交
+            const answer = await new Promise<string>(resolve => {
+                rl.question(options.language === 'en' ? '\nConfirm commit? (y/n) ' : '\n确认提交？(y/n) ', resolve);
+            });
+            rl.close();
 
-        if (answer.toLowerCase() === 'n') {
-            console.log(options.language === 'en' ? 'Commit cancelled' : '已取消提交');
+            if (answer.toLowerCase() === 'n') {
+                console.log(options.language === 'en' ? 'Commit cancelled' : '已取消提交');
+                if (process.env.NODE_ENV !== 'test') {
+                    process.exit(0);
+                }
+                return;
+            }
+
+            await git.add(filesToCommit);
+            await git.commit(message);
+            console.log(options.language === 'en' ? 'Commit successful!' : '提交成功！');
+            if (process.env.NODE_ENV !== 'test') {
+                process.exit(0);
+            }
             return;
+        } catch (error) {
+            rl.close();
+            throw error;
         }
-
-        await git.add(filesToCommit);
-        await git.commit(message);
-        console.log(options.language === 'en' ? 'Commit successful!' : '提交成功！');
     } catch (error: any) {
         console.error(options.language === 'en' ? 'Error: ' : '错误：', error.message);
-        process.exit(1);
+        if (process.env.NODE_ENV !== 'test') {
+            process.exit(1);
+        }
+        throw error;
     }
 } 

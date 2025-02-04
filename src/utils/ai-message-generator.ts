@@ -70,44 +70,42 @@ export async function generateAIMessage(
         const prompt = options.language === 'en' 
             ? `Please generate a commit message for the following Git changes:
 
-Changes status:
-- Added files: ${status.not_added.join(', ')}
-- Modified files: ${status.modified.join(', ')}
-- Deleted files: ${status.deleted.join(', ')}
-- Renamed files: ${status.renamed.map(r => `${r.from} -> ${r.to}`).join(', ')}
-
 Changes content:
 ${diff}
 
-Please generate a concise commit message in English, in the format <type>: <description>.
+Please analyze the changes and:
+1. Identify the 3 most significant changes
+2. Generate a single concise commit message that summarizes these main changes
+3. Format the message as <type>: <description>
+
 Type must be one of: feat (new feature) / fix (bug fix).
 - Use feat for new files or features
 - Use fix for bug fixes or improvements
 
 Requirements:
-1. Message must be concise, no more than 10 words
-2. Don't list specific file names, use general descriptions
-3. Choose the most appropriate type based on changes`
+1. Message must be concise, no more than 100 words
+2. Focus on the most impactful changes only
+3. Use general descriptions, avoid specific file names
+4. Choose the most appropriate type based on the main changes`
             : `请为以下Git变更生成提交信息：
-
-变更状态：
-- 新增文件：${status.not_added.join(', ')}
-- 修改文件：${status.modified.join(', ')}
-- 删除文件：${status.deleted.join(', ')}
-- 重命名文件：${status.renamed.map(r => `${r.from} -> ${r.to}`).join(', ')}
 
 变更内容：
 ${diff}
 
-请生成一条简洁的中文提交信息，格式为 <type>: <description>。
+请分析变更并：
+1. 识别3个最重要的改动
+2. 生成一条简洁的提交信息，概括这些主要改动
+3. 使用 <type>: <description> 格式
+
 type必须是：feat（新功能）/fix（修复）之一。
-- 如果涉及新增文件或新功能，使用 feat
-- 如果是修复问题或改进现有功能，使用 fix
+- 如果主要涉及新增功能，使用 feat
+- 如果主要是修复问题或改进，使用 fix
 
 要求：
-1. 提交信息必须简洁，不超过20个字
-2. 不要列出具体的文件名，使用概括性的描述
-3. 根据变更内容选择最合适的type`;
+1. 提交信息必须简洁，不超过100个字
+2. 只关注最有影响力的改动
+3. 使用概括性描述，避免列出具体文件名
+4. 根据主要改动选择最合适的type`;
 
         const messages: ChatCompletionMessageParam[] = [
             {
